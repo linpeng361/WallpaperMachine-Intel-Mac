@@ -55,8 +55,11 @@ class DiskImageError(Exception):
 
 
 def image_name(version):
-    """The published asset: what `scripts/package.py` writes and the in-app updater selects."""
-    return f"WallpaperMachine-{version}-arm64.dmg"
+    """The published asset: what `scripts/package.py` writes and the in-app updater selects.
+    Tags the slice the host builds for: x86_64 on Intel Macs, arm64 on Apple Silicon."""
+    import platform
+    arch = "x86_64" if platform.machine() == "x86_64" else "arm64"
+    return f"WallpaperMachine-{version}-{arch}.dmg"
 
 
 def volume_name(version):
