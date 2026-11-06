@@ -7575,14 +7575,28 @@ bool MetalRender::init(const MetalRenderInitInfo& info)
         }
 
         id<MTLDevice> device = layer.device;
-        if (device == nil) {
-            device = MTLCreateSystemDefaultDevice();
-            if (device == nil) return pImpl->fail("this machine has no Metal device");
-            layer.device = device;
+        // Respect the user's "Prefer discrete GPU" setting (default off = integrated/battery saving).
+        // CAMetalLayer's default device is the integrated GPU on dual-GPU Macs; override it when the
+        // user asked for the discrete (AMD) GPU, instead of only when layer.device is nil.
+        BOOL preferDiscrete = [[NSUserDefaults standardUserDefaults]
+            objectForKey:@"renderer.preferDiscreteGPU"] != nil &&
+            [[NSUserDefaults standardUserDefaults] boolForKey:@"renderer.preferDiscreteGPU"];
+        if (preferDiscrete) {
+          NSArray<id<MTLDevice>>* all = MTLCopyAllDevices();
+          id<MTLDevice> discrete = nil;
+          for (id<MTLDevice> d in all) {
+            if (!d.isLowPower && !d.isHeadless) { discrete = d; break; }
+          }
+          device = discrete;
         }
+        if (device == nil) device = MTLCreateSystemDefaultDevice();
+        if (device == nil) return pImpl->fail("this machine has no Metal device");
+        layer.device = device;
 
         pImpl->device = device;
         pImpl->layer  = layer;
+        NSLog(@"[WallpaperMachine] Rendering on Metal device: %@ (lowPower=%d, headless=%d)",
+              device.name, (int)device.isLowPower, (int)device.isHeadless);
         pImpl->display_characteristics = info.display_characteristics;
         pImpl->display_hdr_output_allowed = info.display_hdr_output_allowed;
         pImpl->display_id = info.display_id;
