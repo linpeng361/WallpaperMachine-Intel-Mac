@@ -12,6 +12,7 @@ enum SettingsSwitchKey: String, CaseIterable, Sendable {
   case metalFXUpscaling
   case sceneOptimization, sceneOnDemand, sceneVideoPlaneSampling, sceneDisplayFraming
   case sceneReflections
+  case preferDiscreteGPU
   /// Different wallpaper for each desktop, on the display the Library applies wallpapers to: the
   /// same switch as that display's card in Settings › Displays and the toolbar's display menu.
   case desktopWallpapers
@@ -47,6 +48,7 @@ extension PanelController {
     case .sceneVideoPlaneSampling: store.settingsSnapshot.sceneVideoPlaneSamplingEnabled
     case .sceneDisplayFraming: store.settingsSnapshot.sceneDisplayFramingEnabled
     case .sceneReflections: store.settingsSnapshot.sceneQuality.reflections
+    case .preferDiscreteGPU: UserDefaults.standard.object(forKey: "renderer.preferDiscreteGPU") as? Bool ?? false
     case .desktopWallpapers: automationState(for: targetDisplayID).mode == .spaces
     case .translateWorkshopSearches: searchTranslation.isEnabled
     }
@@ -100,6 +102,8 @@ extension PanelController {
     case .sceneDisplayFraming: try await setSceneDisplayFraming(on)
     case .sceneReflections: try await setSceneReflections(on)
     case .translateWorkshopSearches: try await setTranslatesWorkshopSearches(on)
+    case .preferDiscreteGPU:
+      UserDefaults.standard.set(on, forKey: "renderer.preferDiscreteGPU")
     }
   }
 }

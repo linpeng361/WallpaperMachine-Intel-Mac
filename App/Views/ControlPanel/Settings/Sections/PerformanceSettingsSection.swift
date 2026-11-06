@@ -144,12 +144,19 @@ struct PerformanceSettingsSection: View {
       "Experimental. When your display crops part of a 2D scene because their shapes differ, draws only the part you see instead of the whole scene. This saves some GPU work and memory, most when much of the scene is cropped. Applies only with 2D scene resolution set to Display resolution, the wallpaper set to Fill or Original size, and MetalFX not upscaling the scene. A few pixels can look very slightly different, mostly along fine lines and at the edges of the screen. Turn it off if something looks wrong."
   )
 
+  static let preferDiscreteGPU = SettingsItem(
+    id: "performance.prefer-discrete-gpu", section: .performance, group: experimental,
+    inside: advanced, title: "Prefer discrete GPU",
+    note:
+      "Off by default: render on the integrated GPU to save battery. On dual-GPU Macs, turn on to use the stronger discrete GPU (e.g. AMD Radeon) for smoother wallpapers. Takes effect the next time a wallpaper starts."
+  )
+
   static let items = [
     energyUse, energyMethod, preset, frameRateLimit, renderScale, metalFXUpscaling, renderScaleEffective,
     sceneResolution, msaa, shadows, volumetrics, reflections, postProcessing, advanced,
     videoDiagnostics, videoInUse, sceneOptimization, sceneOnDemand,
     sceneDiagnostics, sceneDrawnBy, sceneInForce, sceneQualityInForce, sceneUpdating, sceneCompatibility,
-    videoPlaneSampling, displayFraming,
+    videoPlaneSampling, displayFraming, preferDiscreteGPU,
   ]
 
   /// The live rows this page leaves out while they have nothing to say, by the values its body
@@ -314,6 +321,9 @@ struct PerformanceSettingsSection: View {
       }
       SettingsRow(Self.displayFraming) {
         SettingsSwitchControl(key: .sceneDisplayFraming)
+      }
+      SettingsRow(Self.preferDiscreteGPU) {
+        SettingsSwitchControl(key: .preferDiscreteGPU)
       }
     }
   }
