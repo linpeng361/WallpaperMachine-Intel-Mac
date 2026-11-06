@@ -24,16 +24,24 @@ protocol SteamCMDRuntimeApproving: Sendable {
     func approve(_ candidate: SteamCMDApprovalCandidate) async throws
 }
 
-/// SteamCMD runs only as Apple silicon code: Rosetta is not part of macOS 28's general app
-/// support, so every launch and every validated image must carry an arm64 slice.
+/// SteamCMD must carry a slice matching the host CPU; translated execution is rejected.
 enum SteamCMDArchitecture {
     static let arm64: UInt32 = 0x0100_000c
     static let x86_64: UInt32 = 0x0100_0007
 
-    /// Selects only arm64 slices; an image without one fails with EBADARCH instead of being
-    /// translated. Subtype ANY keeps arm64e system tools such as tar and codesign launchable.
+    /// The CPU type of the machine we are running on, matching Mach-O cpu_type values.
+    /// `hw.cputype` returns the base arch (7=x86, 12=arm) without the 64-bit ABI flag,
+    /// so we OR in CPU_ARCH_ABI64 (0x01000000) to match Mach-O headers.
+    static let host: UInt32 = {
+        var type: cpu_type_t = 0
+        var length = MemoryLayout<cpu_type_t>.size
+        sysctlbyname("hw.cputype", &type, &length, nil, 0)
+        return UInt32(bitPattern: type) | 0x01000000
+    }()
+
+    /// Selects only the host-native slice; an image without one fails with EBADARCH.
     static func requireNative(_ attributes: inout posix_spawnattr_t?) -> Int32 {
-        var types = [cpu_type_t(bitPattern: arm64)]
+        var types = [cpu_type_t(bitPattern: host)]
         var subtypes = [cpu_subtype_t(-1)]  // CPU_SUBTYPE_ANY
         var count = 0
         return posix_spawnattr_setarchpref_np(&attributes, 1, &types, &subtypes, &count)
@@ -295,7 +303,7 @@ struct SteamCMDRuntimeService: SteamCMDRuntimeProviding, SteamCMDRuntimeApprovin
               FileManager.default.isExecutableFile(atPath: binary.path) else {
             throw issue(.invalidSelection, "\(binary.path) is not a macOS Mach-O SteamCMD executable.")
         }
-        guard images.contains(where: { $0.cpu == SteamCMDArchitecture.arm64 }) else {
+        guard images.contains(where: { $0.cpu == SteamCMDArchitecture.host }) else {
             throw appleSiliconIssue(binary)
         }
         return SteamCMDRuntime(rootURL: root, executableURL: binary)
@@ -378,12 +386,11 @@ struct SteamCMDRuntimeService: SteamCMDRuntimeProviding, SteamCMDRuntimeApprovin
                 throw issue(.incompleteRuntime, "\(name) is not a valid Mach-O runtime component.")
             }
         }
-        // Any image without arm64 code could only ever run translated, so the whole copy is
-        // treated as an Intel build that a native reinstall replaces.
-        if let intel = binaries.keys.sorted(by: { $0.path < $1.path }).first(where: { binary in
-            !(binaries[binary] ?? []).contains { $0.cpu == SteamCMDArchitecture.arm64 }
+        // Reject any Mach-O image that lacks a slice matching the host CPU.
+        if let mismatch = binaries.keys.sorted(by: { $0.path < $1.path }).first(where: { binary in
+            !(binaries[binary] ?? []).contains { $0.cpu == SteamCMDArchitecture.host }
         }) {
-            throw appleSiliconIssue(intel)
+            throw appleSiliconIssue(mismatch)
         }
         let frameworkBinary = canonicalURL(framework.appendingPathComponent("Breakpad"))
         guard let frameworkImages = binaries[frameworkBinary] else { throw issue(.incompleteRuntime, "Breakpad.framework has no valid Mach-O binary.") }
@@ -426,7 +433,7 @@ struct SteamCMDRuntimeService: SteamCMDRuntimeProviding, SteamCMDRuntimeApprovin
     }
 
     private func appleSiliconIssue(_ image: URL) -> SteamCMDSetupIssue {
-        issue(.appleSiliconRequired, "This SteamCMD copy is built for Intel Macs only (\(image.lastPathComponent)). Reinstall SteamCMD to get Valve’s Apple silicon version.")
+        issue(.appleSiliconRequired, "This SteamCMD copy has no slice matching this Mac's CPU (\(image.lastPathComponent)). Install the matching SteamCMD build.")
     }
 
     private func validateDependencies(_ binaries: [URL: [MachO.Image]], runtime: SteamCMDRuntime) throws {
