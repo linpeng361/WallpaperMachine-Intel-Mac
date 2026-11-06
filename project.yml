@@ -14,7 +14,9 @@ settings:
     CODE_SIGN_STYLE: Manual
     ENABLE_HARDENED_RUNTIME: NO
     DEVELOPMENT_TEAM: ""
-    ARCHS: arm64
+    # Intel-Mac fork: build x86_64 only on Intel hosts. To ship a universal
+    # binary later, use `ARCHS: arm64 x86_64` on an Apple Silicon build host.
+    ARCHS: x86_64
     ONLY_ACTIVE_ARCH: YES
     ENABLE_DEBUG_DYLIB: NO
 targets:
@@ -85,13 +87,13 @@ targets:
           - "$(SRCROOT)/Renderer/Engine/src/Platform/Apple"
         LIBRARY_SEARCH_PATHS: &rendererLibraryPaths
           - "$(SRCROOT)/Renderer/target/release"
-          - /opt/homebrew/lib
-          - /opt/homebrew/opt/quickjs-ng/lib
+          - /usr/local/lib
+          - /usr/local/opt/quickjs-ng/lib
         OTHER_SWIFT_FLAGS: "-Xcc -fmodule-map-file=$(SRCROOT)/App/Bridge/Generated/WallpaperBridgeFFI.modulemap -Xcc -fmodule-map-file=$(SRCROOT)/Renderer/Media/Apple/WallpaperMedia.modulemap"
         LD_RUNPATH_SEARCH_PATHS:
           - "@executable_path/../Frameworks"
-          - /opt/homebrew/lib
-          - /opt/homebrew/opt/quickjs-ng/lib
+          - /usr/local/lib
+          - /usr/local/opt/quickjs-ng/lib
         OTHER_LDFLAGS: &rendererLinkerFlags
           - -lwallpaper_bridge
           - -lc++
@@ -154,8 +156,8 @@ targets:
         LD_RUNPATH_SEARCH_PATHS:
           - "@executable_path/../Frameworks"
           - "@executable_path/../../../../Frameworks"
-          - /opt/homebrew/lib
-          - /opt/homebrew/opt/quickjs-ng/lib
+          - /usr/local/lib
+          - /usr/local/opt/quickjs-ng/lib
         SKIP_INSTALL: YES
   WallpaperMachineTests:
     type: bundle.unit-test
