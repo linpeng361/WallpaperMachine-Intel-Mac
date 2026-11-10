@@ -96,6 +96,114 @@ if ! GIT_EDITOR=true git rebase origin/main; then
   fi
 fi
 
+# ---------- 3.5 确保 README 是 Intel fork 版本 ----------
+# rebase 可能静默覆盖 README（git 自动合并取上游），rebase 后强制校验
+if ! head -1 README.md | grep -q "Intel Mac"; then
+  warn "README.md 被上游覆盖，恢复 Intel fork 版本..."
+  cat > README.md << 'EOF'
+# WallpaperMachine — Intel Mac Build
+
+A fork of [WallpaperMachine](https://github.com/MMFoundation/WallpaperMachine) that runs on Intel Macs.
+
+## What this is
+
+The original app only supports Apple silicon (M1 and later). This fork was adapted with AI assistance (**Doubao**) to run on Intel Macs.
+
+## What was changed
+
+- Compilation target: arm64 → x86_64
+- Homebrew paths: `/opt/homebrew` → `/usr/local`
+- Added a GPU toggle for dual-GPU Macs (Intel integrated / AMD discrete)
+- SteamCMD now detects the host CPU architecture at runtime
+- DMG filename automatically tags the build architecture
+
+## Tested on
+
+| | |
+|---|---|
+| Model | MacBookPro16,1 (16" 2019, A2141) |
+| CPU | Intel Core i9-9980HK |
+| GPU | AMD Radeon Pro 5500M 8GB + Intel UHD 630 |
+| macOS | 26.7.2 (OCLP) |
+
+## Download
+
+Get the latest `WallpaperMachine-*.dmg` from [Releases](../../releases/latest).
+
+## Install
+
+1. Open the dmg and drag to Applications
+2. Right-click → Open on first launch (not notarized)
+3. Or run: `xattr -dr com.apple.quarantine /Applications/WallpaperMachine.app`
+
+## Notes
+
+- GPU toggle defaults to **off** (integrated GPU, lower power). Enable in Settings → Performance → Advanced → Experimental.
+- Energy monitoring reports zeros on Intel Macs (no Energy Gauge hardware). Not a bug.
+
+## Credits
+
+- Original: [MMFoundation/WallpaperMachine](https://github.com/MMFoundation/WallpaperMachine)
+- AI assistant: [Doubao](https://www.doubao.com)
+EOF
+fi
+
+if ! head -1 README.zh-CN.md | grep -q "Intel Mac"; then
+  warn "README.zh-CN.md 被上游覆盖，恢复 Intel fork 版本..."
+  cat > README.zh-CN.md << 'EOF'
+# WallpaperMachine — Intel Mac 版
+
+这是 [WallpaperMachine](https://github.com/MMFoundation/WallpaperMachine) 的 fork，让它能在 Intel 芯片的 Mac 上运行。
+
+## 这是什么？
+
+原版只支持 Apple 芯片（M1 及更新机型）。这个版本用 AI 助手（**豆包**）改造，让 Intel Mac 也能用。
+
+## 改了什么？
+
+- 编译目标从 arm64 改成 x86_64
+- Homebrew 路径从 `/opt/homebrew` 改成 `/usr/local`
+- 加了双显卡切换开关（Intel 核显 / AMD 独显）
+- SteamCMD 运行时自动检测 CPU 架构
+- 打包时自动按架构命名 dmg
+
+## 测试机型
+
+| 项目 | 信息 |
+|---|---|
+| 机型 | MacBook Pro 16寸 2019（A2141） |
+| 芯片 | Intel Core i9 |
+| 显卡 | AMD Radeon Pro 5500M + Intel 核显 |
+| 系统 | macOS 26.7.2（OCLP） |
+
+## 下载
+
+在 [Releases](../../releases/latest) 里下载 `WallpaperMachine-*.dmg`。
+
+## 安装
+
+1. 双击 dmg，拖到「应用程序」文件夹
+2. 第一次打开右键 → 打开（没有苹果开发者签名）
+3. 或终端运行：`xattr -dr com.apple.quarantine /Applications/WallpaperMachine.app`
+
+## 说明
+
+- GPU 开关默认关（核显省电），在 设置 → 性能 → 高级 → 实验性 里打开
+- 能耗监测在 Intel 上显示 0，因为 Intel Mac 没有能耗传感器硬件，不是 bug
+
+## 致谢
+
+- 原版：[MMFoundation/WallpaperMachine](https://github.com/MMFoundation/WallpaperMachine)
+- AI 助手：[豆包](https://www.doubao.com)
+EOF
+fi
+
+# 如果 README 被改了，amend 到 rebase 后的 HEAD
+if ! git diff --quiet README.md README.zh-CN.md; then
+  git add README.md README.zh-CN.md
+  GIT_EDITOR=true git commit --amend --no-edit
+fi
+
 # ---------- 5. Push ----------
 step "4/4 推送到 GitHub"
 for i in 1 2 3; do
