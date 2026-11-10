@@ -4,9 +4,10 @@
 set -e
 cd "$(dirname "$0")"
 
-# 全局禁用 git 编辑器（避免 vim 弹出）
+# 全局禁用 git 编辑器和分页器
 export GIT_EDITOR=true
 export GIT_SEQUENCE_EDITOR=true
+export GIT_PAGER=cat
 
 # ---------- 工具函数 ----------
 step() { echo -e "\n\033[1;34m=== $1 ===\033[0m"; }
