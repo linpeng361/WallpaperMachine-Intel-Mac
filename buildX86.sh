@@ -23,7 +23,8 @@ LOG=/Users/lin/Doubao/chats/2026-11-06/new-chat/build-app.log
 python3 scripts/build.py --configuration $CONFIG 2>&1 | tee "$LOG" || fail "编译失败，看 $LOG"
 
 step "运行测试"
-python3 scripts/test.py || warn "测试有失败，但继续打包"
+# test_we_reference.py 用了 Linux 专有的 time.tzset()，macOS 上必挂，不阻塞打包
+python3 scripts/test.py || warn "有测试失败（test_we_reference.py 是上游 Linux-only bug），继续打包"
 
 step "打包 dmg"
 python3 scripts/package.py --configuration $CONFIG --install || fail "打包失败"

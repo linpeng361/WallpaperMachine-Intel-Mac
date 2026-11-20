@@ -426,8 +426,8 @@ def verify(image, version, contract=bundle_contract.verify_bundle, metadata=None
                 architectures = _run(["/usr/bin/lipo", "-archs", app / "Contents/MacOS/WallpaperMachine"],
                                      "Cannot read update architectures").decode("ascii").strip().split()
                 minimum = values.get("LSMinimumSystemVersion")
-                if not isinstance(minimum, str) or not minimum or "arm64" not in architectures:
-                    raise DiskImageError("The update must declare its minimum macOS version and contain arm64 code")
+                if not isinstance(minimum, str) or not minimum or "x86_64" not in architectures:
+                    raise DiskImageError("The update must declare its minimum macOS version and contain x86_64 code")
                 metadata.update(version=version, bundle_identifier=values["CFBundleIdentifier"],
                                 minimum_system_version=minimum, architectures=architectures)
             link = mount / APPLICATIONS_LINK

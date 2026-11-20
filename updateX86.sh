@@ -1,6 +1,6 @@
 #!/bin/bash
 # WallpaperMachine Intel fork — GitHub 更新一键脚本
-# 用法: ./update.sh
+# 用法: ./updateX86.sh
 set -e
 cd "$(dirname "$0")"
 
@@ -14,7 +14,7 @@ step() { echo -e "\n\033[1;34m=== $1 ===\033[0m"; }
 warn() { echo -e "\033[1;33m⚠ $1\033[0m"; }
 fail() { echo -e "\033[1;31m✗ $1\033[0m"; exit 1; }
 
-# 退出时自动恢复 stash
+# 退出时自动恢复 stash（只在真正 stash 了的情况下）
 cleanup() {
   if [ "$STASHED" = "1" ]; then
     echo ""
@@ -24,16 +24,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ---------- 1. 检查状态 ----------
-step "1/4 检查 git 状态"
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  warn "有未提交改动，先 stash"
-  git stash
-  STASHED=1
-fi
-
-# ---------- 2. 拉取上游 ----------
-step "2/4 拉取上游"
+# ---------- 1. 拉取上游 ----------
+step "拉取上游"
 for i in 1 2 3; do
   if git fetch origin --prune; then break; fi
   warn "fetch 失败，第 $i 次重试..."
@@ -41,14 +33,13 @@ for i in 1 2 3; do
   [ $i -eq 3 ] && fail "无法连接上游，请检查网络/代理"
 done
 
-# ---------- 3. 检查有无新提交 ----------
-step "3/4 检查更新"
+# ---------- 2. 检查有无新提交 ----------
+step "检查更新"
 LOCAL_BASE=$(git merge-base HEAD origin/main)
 UPSTREAM_HEAD=$(git rev-parse origin/main)
 
 if [ "$LOCAL_BASE" = "$UPSTREAM_HEAD" ]; then
   echo "已经是最新，无需更新"
-  echo ""
   git log --oneline -3
   exit 0
 fi
@@ -61,10 +52,19 @@ echo ""
 read -p "继续 rebase 并 push？[y/N] " confirm
 [ "$confirm" = "y" ] || [ "$confirm" = "Y" ] || { echo "已取消"; exit 0; }
 
+# ---------- 3. 有更新才 stash + rebase ----------
+step "暂存本地改动"
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  warn "有未提交改动，先 stash"
+  git stash
+  STASHED=1
+fi
+
 # ---------- 4. Rebase ----------
 # 注意：rebase 时 ours=上游(目标)，theirs=我们 fork(被重放的commit)
+step "Rebase"
 if ! GIT_EDITOR=true git rebase origin/main; then
-  warn "Rebase 有冲突，自动处理已知文件..."
+  warn "有冲突，自动处理已知文件..."
   RESOLVED=0
 
   # xcstrings: 取上游版本（自动生成的翻译文件）
@@ -101,7 +101,7 @@ if ! GIT_EDITOR=true git rebase origin/main; then
   fi
 fi
 
-# ---------- 3.5 确保 README 是 Intel fork 版本 ----------
+# ---------- 5. 确保 README 是 Intel fork 版本 ----------
 # rebase 可能静默覆盖 README（git 自动合并取上游），rebase 后强制校验
 if ! head -1 README.md | grep -q "Intel Mac"; then
   warn "README.md 被上游覆盖，恢复 Intel fork 版本..."
@@ -206,11 +206,11 @@ fi
 # 如果 README 被改了，amend 到 rebase 后的 HEAD
 if ! git diff --quiet README.md README.zh-CN.md; then
   git add README.md README.zh-CN.md
-  GIT_EDITOR=true git commit --amend --no-edit
+  git commit --amend --no-edit
 fi
 
-# ---------- 5. Push ----------
-step "4/4 推送到 GitHub"
+# ---------- 6. Push ----------
+step "推送到 GitHub"
 for i in 1 2 3; do
   if git push github intel-mac-support:intel --force; then break; fi
   warn "push 失败，第 $i 次重试..."
