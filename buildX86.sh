@@ -27,7 +27,8 @@ step "运行测试"
 python3 scripts/test.py || warn "有测试失败（test_we_reference.py 是上游 Linux-only bug），继续打包"
 
 step "打包 dmg"
-python3 scripts/package.py --configuration $CONFIG --install || fail "打包失败"
+# 不带 --install：不拷贝到 ~/Applications
+python3 scripts/package.py --configuration $CONFIG || fail "打包失败"
 
 DMG=$(find "$PRODUCT_DIR" -name "*.dmg" -newer "$LOG" 2>/dev/null | head -1)
 if [ -z "$DMG" ]; then
